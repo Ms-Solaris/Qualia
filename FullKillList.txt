@@ -1,0 +1,4 @@
+firefox-esr
+steam
+factorio
+Discord

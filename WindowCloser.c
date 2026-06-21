@@ -2,7 +2,7 @@
 #include <signal.h>
 #include <string.h>
 
-int RetrieveExternalPID(char programName[])
+int RetrieveExternalPID(char programName[], int *pidArray)
 {
     /*
     This function finds the PID of any program, using the name of that program, by
@@ -11,8 +11,11 @@ int RetrieveExternalPID(char programName[])
     that, when fed into the kill function, -1 tries to signal every single program.
     Input:
      char programName[]: A string containing the name of the program. This must be exact, or the program will throw an error.
-     Output:
-     int pid:            The PID of the requested program.
+     int *pidArray: An array of all 0s, to 
+    Output:
+     0, if the program runs correctly.
+     -1, if no process matching programName could be found.
+     The first few entries of pidArray will be updated to contain the PIDs found, in no particular order.
     */
     FILE *p;                              // Prepare file data structure
     char currentLine[200];                // Somewhere to put the retrieved data...
@@ -21,38 +24,56 @@ int RetrieveExternalPID(char programName[])
     strcat(lookupCommand, programName);
     strncat(lookupCommand, &endOfLineCharacter, 1);
     p = popen(lookupCommand, "r"); // Execute "ps -e", filter for the program we're interested in with grep, and put the data in a 'file' (p) that we can read from.
-                                   // Currently assumes that grep finds only a single line.
-    fgets(currentLine, 200, p);    // Attempt to extract the single line from the file.
-     if (feof(p)) {                // Check if it worked. If not, there was no file i.e. grep turned up nothing: we exit with an error.
-        return(-1);
-     }
+                                   
     int currentCharacterIndex;
     char pidStr[7];
-    int currentDigitIndex = 0;
-
-    for (currentCharacterIndex = 0; currentCharacterIndex < 7; currentCharacterIndex++)
-    { // The first 7 characters of the line are the PID, plus an unknown amount of whitespace. We read each one...
-        if (currentLine[currentCharacterIndex] != ' ') // Check whether or not the character is an empty space, and save each non-empty character to pidStr.
-        { 
-            pidStr[currentDigitIndex] = currentLine[currentCharacterIndex];
-            currentDigitIndex++;
-        }
-    }
-    currentDigitIndex++;
-    pidStr[currentDigitIndex] = 0; //Don't forget to terminate the string, now that we know how long it is.
     int pidInt;
-    sscanf(pidStr, "%d", &pidInt);
+    int loopCount = 0;
+    
+    while(fgets(currentLine, 200, p) != NULL){
+    
+        int currentDigitIndex = 0;
+
+        for (currentCharacterIndex = 0; currentCharacterIndex < 7; currentCharacterIndex++)
+        { // The first 7 characters of the line are the PID, plus an unknown amount of whitespace. We read each one...
+            if (currentLine[currentCharacterIndex] != ' ') // Check whether or not the character is an empty space, and save each non-empty character to pidStr.
+            { 
+                pidStr[currentDigitIndex] = currentLine[currentCharacterIndex];
+                currentDigitIndex++;
+            }
+        }
+        
+        currentDigitIndex++;
+        pidStr[currentDigitIndex] = 0; //Don't forget to terminate the string, now that we know how long it is.
+        int pidInt;
+        sscanf(pidStr, "%d", &pidInt); //Convert to an int...
+        pidArray[loopCount] = pidInt;  //Save to the array...
+        loopCount++;
+    }
+    
+    if (loopCount == 0){ //If grep can't match anything, the while loop above won't execute. This leaves the loop count at 0, which
+        return(-1);      //is used here to return an error code to indicate the program couldn't be found.
+    }
+    
     pclose(p);
-    return(pidInt);
+    return(0);
 }
 
 int main()
 {
-   int PID = RetrieveExternalPID("firefox-esr");
-   if (PID == -1) {
+   int PID[20] = {0};
+   int errorCode = RetrieveExternalPID("Discord", PID);
+   if (errorCode == -1) {
     printf("Error: Program could not be found.");
     return(-1);
    }
-   kill(PID, SIGTERM);
+   
+   int loopCount = 0;
+
+   while (PID[loopCount] != 0)
+   {
+    kill(PID[loopCount], SIGTERM);
+    loopCount++;
+   }
    return(0);
 }
