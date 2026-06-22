@@ -22,9 +22,8 @@ int BlockWebsite(char url[MAX_LINE]){
    host = fopen("/etc/hosts", "r");
    char currentLine[MAX_LINE];
    char blockString[MAX_LINE] = "127.0.0.1 ";
-   char endOfLine[MAX_LINE] = "\n";
    strcat(blockString, url);
-   strcat(blockString, endOfLine);
+   
 
    while (fgets(currentLine, MAX_LINE, host) != NULL){
       
@@ -38,6 +37,7 @@ int BlockWebsite(char url[MAX_LINE]){
    fclose(host);
    host = fopen("/etc/hosts", "a");
    fprintf(host, blockString);
+   fclose(host);
    return 0;
 
 }
@@ -58,9 +58,7 @@ int UnblockWebsite(char url[MAX_LINE]){
    host = fopen("/etc/hosts", "r");
    char currentLine[MAX_LINE];
    char blockString[MAX_LINE] = "127.0.0.1 ";
-   char endOfLine[MAX_LINE] = "\n";
    strcat(blockString, url);
-   strcat(blockString, endOfLine);
 
    while (fgets(currentLine, MAX_LINE, host) != NULL){
       if (strcmp(currentLine, blockString) != 0)
@@ -177,14 +175,15 @@ int main(){
     programsToBeKilled = fopen("FullKillList.txt", "r");
     FILE *websitesToBeBlocked;
     websitesToBeBlocked = fopen("FullBlockList.txt", "r");
-    char currentProgram[100]; //Also contains urls sometimes.
+    char currentProgram[MAX_LINE]; //Also contains urls sometimes.
     
-
                                      //Creates a struct called date depending on 
-    while (1){                       //the value of t, which can be used to extract
-        sleep(60);                   //the day, hour, minute, etc.
+    while (60){                       //the value of t, which can be used to extract
+                                     //the day, hour, minute, etc.
+        sleep(1);                    
         t = time(NULL);
         struct tm date = *localtime(&t);
+        printf("%d", date.tm_hour);
         if (date.tm_hour == 22 && date.tm_min > 5)
         {
             while(fgets(currentProgram, 100, programsToBeKilled) != NULL)
@@ -200,20 +199,21 @@ int main(){
             }
             rewind(programsToBeKilled);
         }
-
         if (date.tm_hour > 7 && date.tm_hour < 17)
         {
             while(fgets(currentProgram, 100, websitesToBeBlocked) != NULL)
             {
-                BlockWebsite(currentProgram)
+                BlockWebsite(currentProgram);
+                printf(currentProgram);
             }
-
+            rewind(websitesToBeBlocked);
         } else
         {
             while(fgets(currentProgram, 100, websitesToBeBlocked) != NULL)
             {
-                UnblockWebsite(currentProgram)
+                UnblockWebsite(currentProgram);
             }
+            rewind(websitesToBeBlocked);
         }
         
     }
